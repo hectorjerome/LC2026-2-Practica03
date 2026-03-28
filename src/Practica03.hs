@@ -101,12 +101,51 @@ type Literal = Prop
 type Clausula = [Literal]
 
 --Ejercicio 1
+
+{-
+Funcion auxiliar para ver si un elemento esta una lista (del mismo tipo)
+Rgresa Verdadero si esta y falso si no. Se ocupa en otra función auxiliar
+para eliminar repetidos y también el función de interpretación.
+-}
+estaEn :: (Eq a) => a -> [a] -> Bool
+estaEn x [] = False
+estaEn y (x:xs) = if x==y then True else False || estaEn y xs
+
+{-
+Función auxiliar que dada una lista quita sus elementos repetidos
+para dejar solo una aparición por elemento.
+Se ocupa en la función de variables de una proposición.
+-}
+eliminaRepetidos :: (Eq a) =>  [a] -> [a]
+eliminaRepetidos [] = []
+eliminaRepetidos (x:xs) = if (estaEn x xs) then eliminaRepetidos xs else [x] ++ eliminaRepetidos xs
+
+
+casoOr :: Prop -> [Literal]
+casoOr (Var p) = [Var p]
+casoOr (Not p) = [Not p]
+casoOr (Or p q) = eliminaRepetidos(casoOr p ++ casoOr q)
+
 clausulas :: Prop -> [Clausula]
-clausulas = undefined
+clausulas (Var p) = [[Var p]]
+clausulas (Not p) = [[Not p]]
+clausulas (Or p q) = [casoOr (Or p q)]
+clausulas (And p q) = clausulas(p) ++ clausulas(q)
 
 --Ejercicio 2
+
+sonComplemento :: Literal -> Literal -> Bool
+sonComplemento (Var p) (Not (Var q)) = if p == q then True else False
+sonComplemento (Not (Var p)) (Var q) = if p == q then True else False
+sonComplemento p q = False
+
+hayComplemento :: Literal -> Clausula -> Bool
+hayComplemento x [] = False
+hayComplemento x (y:ys) = if sonComplemento x y then True else hayComplemento x ys
+
 resolucion :: Clausula -> Clausula -> Clausula
-resolucion = undefined
+resolucion [] (y:ys) = (y:ys)
+resolucion (x:xs) (y:ys) =  if hayComplemento x (y:ys) then eliminaRepetidos(xs ++ [y | y <- (y:ys), sonComplemento x y == False]) else eliminaRepetidos([x] ++ resolucion xs (y:ys))
 
 {-
 ALGORITMO DE SATURACION
