@@ -32,31 +32,37 @@ FORMAS NORMALES
 
 --Ejercicio 1
 
-{-Función para quitar implicaciones y doble implicaciones -}
+{-
+Función auxiliar para quitar implicaciones y doble implicaciones de una proposición 
+-}
 quitaImpl :: Prop -> Prop
-quitaImpl (Cons True)  = Cons True
+quitaImpl (Cons True) = Cons True
 quitaImpl (Cons False) = Cons False
-quitaImpl (Var p)      = Var p
-quitaImpl (Not p)      = Not (quitaImpl p)
-quitaImpl (Or p q)     = Or (quitaImpl p) (quitaImpl q)
-quitaImpl (And p q)    = And (quitaImpl p) (quitaImpl q)
-quitaImpl (Impl p q)   = Or (Not (quitaImpl p)) (quitaImpl q)
-quitaImpl (Syss p q)   = And (Or (Not (quitaImpl p)) (quitaImpl q)) 
-                             (Or (Not (quitaImpl q)) (quitaImpl p))
+quitaImpl (Var p) = Var p
+quitaImpl (Not p) = Not (quitaImpl p)
+quitaImpl (Or p q) = Or (quitaImpl p) (quitaImpl q)
+quitaImpl (And p q) = And (quitaImpl p) (quitaImpl q)
+quitaImpl (Impl p q) = Or (Not (quitaImpl p)) (quitaImpl q)
+quitaImpl (Syss p q) = And (Or (Not (quitaImpl p)) (quitaImpl q)) 
+                        (Or (Not (quitaImpl q)) (quitaImpl p))
 
-{- Función que maneja los casos de la negación para la forma normal negativa -}
+{- 
+Función que maneja los casos de la negación para la forma normal negativa 
+-}
 casoNegacion :: Prop -> Prop
-casoNegacion (Cons True)  = Cons False
+casoNegacion (Cons True) = Cons False
 casoNegacion (Cons False) = Cons True
-casoNegacion (Var p)      = Not (Var p)
-casoNegacion (Not p)      = fnnAux p
-casoNegacion (Or p q)     = And ( fnnAux (Not p)) (fnnAux (Not q))
-casoNegacion (And p q)     = Or ( fnnAux (Not p)) (fnnAux (Not q)) 
+casoNegacion (Var p) = Not (Var p)
+casoNegacion (Not p) = fnnAux p
+casoNegacion (Or p q) = And ( fnnAux (Not p)) (fnnAux (Not q))
+casoNegacion (And p q) = Or ( fnnAux (Not p)) (fnnAux (Not q)) 
 
-{-Función auxiliar para la forma normal neagtiva, solo recibe fórmulas
-sin implicaciones ni doble implicaciones -}
+{-
+Función auxiliar para la forma normal neagtiva,
+ya recibe fórmulas sin implicaciones ni doble implicaciones 
+-}
 fnnAux :: Prop -> Prop
-fnnAux (Cons True)  = Cons True
+fnnAux (Cons True) = Cons True
 fnnAux (Cons False) = Cons False
 fnnAux (Var p)      = Var p
 fnnAux (Not p)      = casoNegacion p
@@ -69,6 +75,11 @@ fnn p = fnnAux (quitaImpl p)
 
 --Ejercicio 2
 
+{-
+Función que toma dos proposiciones (dado que suponemos que solo se llamará
+bajo el caso de una disyunción), regresa la disyunción en caso de literales,
+distribuye en caso de And's y busca recursivamente en los Or's. 
+-}
 distribuir :: Prop -> Prop -> Prop
 distribuir (Var p) (Var q) = Or (Var p) (Var q)
 distribuir (Not (Var p)) (Var q) = Or (Not (Var p)) (Var q)
@@ -79,7 +90,9 @@ distribuir p (And q r) = And (fncAux (Or p q)) (fncAux (Or p r))
 distribuir (Or p q) r = Or (fncAux(Or p q)) (fncAux r)
 distribuir p (Or q r) = Or (fncAux p) (fncAux(Or q r))
 
-
+{-
+Función que ya recibe la fórmula en forma normal negativa
+-}
 fncAux :: Prop -> Prop
 fncAux (Cons True) = Cons True
 fncAux (Cons False) = Cons False
@@ -120,7 +133,9 @@ eliminaRepetidos :: (Eq a) =>  [a] -> [a]
 eliminaRepetidos [] = []
 eliminaRepetidos (x:xs) = if (estaEn x xs) then eliminaRepetidos xs else [x] ++ eliminaRepetidos xs
 
-
+{-
+Función auxiliar para regresar las literales de un Or en una lista
+-}
 casoOr :: Prop -> [Literal]
 casoOr (Var p) = [Var p]
 casoOr (Not p) = [Not p]
@@ -134,11 +149,18 @@ clausulas (And p q) = clausulas(p) ++ clausulas(q)
 
 --Ejercicio 2
 
+{-
+Función que verifica si dos literales son complementarias o no
+-}
 sonComplemento :: Literal -> Literal -> Bool
 sonComplemento (Var p) (Not (Var q)) = if p == q then True else False
 sonComplemento (Not (Var p)) (Var q) = if p == q then True else False
 sonComplemento p q = False
 
+{-
+Función que verifica si dada una literal, la literal complementaria 
+se encuentra en una cláusula.
+-}
 hayComplemento :: Literal -> Clausula -> Bool
 hayComplemento x [] = False
 hayComplemento x (y:ys) = if sonComplemento x y then True else hayComplemento x ys
@@ -153,9 +175,33 @@ ALGORITMO DE SATURACION
 
 --Ejercicio 1
 hayResolvente :: Clausula -> Clausula -> Bool
-hayResolvente = undefined
+hayResolvente [] _ = False
+hayResolvente (x:xs) q = if hayComplemento x q then True else hayResolvente xs q
 
 --Ejercicio 2
+{-
+Función auxiliar para hacer un paso del algoritmo de saturación regresando el mismo
+conjunto más las clausulas que se pudieron obtener con resolución binaria de cada par.
+-}
+rs :: [Clausula] -> [Clausula]
+rs [] = []
+rs [x] = [x]
+rs (x:(y:xs)) = if hayResolvente x y
+                then eliminaRepetidos( (x:(y:xs)) ++ [resolucion x y] ++ rs (x:xs) ++ rs (y:xs) )
+                else eliminaRepetidos( (x:(y:xs)) ++ rs (x:xs) ++ rs(y:xs) )
+
+{-
+Función auxiliar que recibe la lista de cláusulas dada una fórmula proposicional:
+Si encuentra la clausula vaciá regresa falso, y el conjunto es insatisfacible, si 
+la conjunto siguiente al aplicar resolución binaria para cada par es igual al actual
+regresa verdadero, si no pasa ninguna de esas condiciones se continua intentando.
+-}
+saturacionAux :: [Clausula] -> Bool
+saturacionAux cl  
+            | estaEn [] cl = False 
+            | cl == rs(cl) = True
+            | otherwise = saturacionAux (rs cl)  
+
 --Funcion principal que pasa la formula proposicional a fnc e invoca a res con las clausulas de la formula.
 saturacion :: Prop -> Bool
-saturacion = undefined
+saturacion p = saturacionAux(clausulas (fnc p))
